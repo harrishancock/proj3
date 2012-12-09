@@ -46,22 +46,25 @@ int main (int argc, char **argv) {
     while (!f.eof()) {
         buf[0] = seq;
         f.read(buf + 1, 50);
+
         sock.send(addr, buf, 51);
         printf("send\n");
 
-        Address next_addr;
-        rlen = buflen;
-        sock.recvFrom(next_addr, buf, rlen);
-        printf("recv\n");
-        
-        if (next_addr != addr) {
-            continue;
-        }
+        do {
+            Address next_addr;
+            rlen = buflen;
+            sock.recvFrom(next_addr, buf, rlen);
+            printf("recv\n");
+            
+            if (next_addr != addr) {
+                continue;
+            }
 
-        if (1 != rlen) {
-            continue;
-        }
+            if (1 != rlen) {
+                continue;
+            }
 
+        } while (buf[0] != seq);
         seq++;
     }
 
