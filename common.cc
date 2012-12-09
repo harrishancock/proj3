@@ -82,6 +82,27 @@ int ctorAux (int flags, const char *node, const char *service,
 
 //////////////////////////////////////////////////////////////////////////////
 
+std::string timestring (const char *format) {
+    char s[200];
+
+    auto t = time(nullptr);
+    auto tmp = localtime(&t);
+    if (!tmp) {
+        perror("localtime");
+        exit(EXIT_FAILURE);
+    }
+    
+    int rc = strftime(s, sizeof(s), format, tmp);
+    if (0 == rc) {
+        fprintf(stderr, "strftime failed\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return std::string(s);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 UDPIPv4Socket::UDPIPv4Socket (const char *port)
         : fd(ctorAux(AI_PASSIVE, nullptr, port, &::bind))
         , connected(false) { }
@@ -121,17 +142,17 @@ void UDPIPv4Socket::send (const Address& addr, const char *buf, size_t buflen) c
     }
 }
 
-bool UDPIPv4Socket::timedRecvFrom (Address& addr, char *buf, size_t& buflen, int microseconds) const {
+bool UDPIPv4Socket::timedRecvFrom (Address& addr, char *buf, size_t& buflen, int seconds) const {
 
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(fd, &rfds);
 
     struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = microseconds;
+    tv.tv_sec = seconds;
+    tv.tv_usec = 0;
 
-    int rc = select(1, &rfds, nullptr, nullptr, &tv);
+    int rc = select(fd + 1, &rfds, nullptr, nullptr, &tv);
 
     if (-1 == rc) {
         perror("select");

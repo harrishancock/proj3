@@ -13,6 +13,10 @@
 
 //////////////////////////////////////////////////////////////////////////////
 
+std::string timestring (const char *format);
+
+//////////////////////////////////////////////////////////////////////////////
+
 class Address {
 public:
     Address () {
@@ -43,73 +47,6 @@ public:
 
 private:
     struct sockaddr_in sin;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-
-class Frame {
-public:
-    /* non-copyable for now */
-    Frame (const Frame&) = delete;
-    Frame& operator= (const Frame&) = delete;
-
-    /*
-     * Various accessors. The data accessors are intended for use by
-     * UDPIPv4Socket for sending over the socket API. The payload accessors are
-     * intended for use by the user of UDPIPv4Socket.
-     */
-
-    const unsigned char *dataPtr () const {
-        return data;
-    }
-
-    size_t dataLen () const {
-        return PAYLOADLEN + 1;
-    }
-
-    const unsigned char *payloadPtr () const {
-        return data + 1;
-    }
-
-    size_t payloadLen () const {
-        return PAYLOADLEN;
-    }
-
-    unsigned char sequence () const {
-        return data[0];
-    }
-
-    /*
-     * Various mutators.
-     */
-
-    /**
-     * Copy the supplied buffer into this frame's buffer. An implicit size of
-     * PAYLOADLEN + 1 is assumed.
-     */
-    void setData (const unsigned char *dat) {
-        memcpy(data, dat, dataLen());
-    }
-
-    /**
-     * Copy the supplied payload into this frame's buffer. An implicit buffer
-     * size of PAYLOADLEN is assumed.
-     */
-    void setPayload (const unsigned char *pld) {
-        memcpy(data + 1, pld, payloadLen());
-    }
-
-    /**
-     * Set this frame's sequence number.
-     */
-    void setSequence (unsigned char seq) {
-        data[0] = seq;
-    }
-
-private:
-    static const size_t PAYLOADLEN = 50;
-
-    unsigned char data[PAYLOADLEN + 1];
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -158,7 +95,7 @@ public:
      * of the buffer pointed to by buf; it will later be set to the actual
      * number of bytes received.
      */
-    bool timedRecvFrom (Address& addr, char *buf, size_t& buflen, int microseconds) const;
+    bool timedRecvFrom (Address& addr, char *buf, size_t& buflen, int seconds) const;
 
     void recvFrom (Address& addr, char *buf, size_t& buflen) const;
 
