@@ -80,55 +80,54 @@ int main (int argc, char **argv) {
     IPv4Address dest (host, atoi(port));
 
     printf("Requesting file %s from %s:%s\n", file, host, port);
-    sock.send(dest, file, strlen(file));
+    const size_t buflen = 1024;
+    char buf[buflen];
+    strncpy(buf, file, buflen);
+    sock.send(dest, buf, buflen);
 
     IPv4Address addr;
-    const size_t buflen = PAYLOADLEN + 1;   /* +1 for header */
-    char buf[buflen];
+    const size_t framelen = PAYLOADLEN + 1;   /* +1 for header */
+    char frame[framelen];
 
     size_t rlen;
+    char seq = 0;   /* Arbitrarily decide that 0 must be the first seqno. */
+
     do {
-        /* rlen will be used as an output parameter, so copy buflen. */
-        rlen = buflen;
-        unreliableRecv(sock, addr, buf, rlen);
-    } while (addr != dest);
-
-    print_receipt(buf);
-
-    f.write(buf + 1, rlen - 1);
-
-    char seq = buf[0];
-
-    /* Only loop if we received a fully-loaded frame. */
-    while (PAYLOADLEN + 1 == rlen) {
-        /* ACK the previous frame. */
-        sock.send(dest, buf, 1);
-        print_sent(buf[0]);
+        /* rlen will be used as an output parameter, so copy framelen. */
+        rlen = framelen;
 
         /* Wait for the next frame. */
-        seq++;
-        rlen = buflen;
-        unreliableRecv(sock, addr, buf, rlen);
+        unreliableRecv(sock, addr, frame, rlen);
 
         if (addr != dest) {
             printf("packet arrived from incorrect address\n");
             continue;
         }
 
-        if (buf[0] != seq) {
+        if (frame[0] != seq) {
             printf("out-of-sequence packet\n");
             continue;
         }
 
-        print_receipt(buf);
+        print_receipt(frame);
 
         /* Seems to check out okay--write it. */
-        f.write(buf + 1, rlen - 1);
-    }
+        f.write(frame + 1, rlen - 1);
 
-    /* The last ACK. */
-    sock.send(dest, buf, 1);
-    print_sent(buf[0]);
+        /* ACK the previous frame. Note that it would be nice if we could send
+         * only the single first byte of the frame--i.e., the part containing
+         * the sequence number. This works on most machines I tested against,
+         * but the College of Science machines require a minimum buffer size of
+         * 12 before they will deign to actually send a packet to a non-
+         * loopback host, so just parrot the entire frame back to the server to
+         * play it safe. */
+        sock.send(dest, frame, framelen);
+        print_sent(frame[0]);
+
+        seq++;
+
+        /* Only loop if we received a fully-loaded frame. */
+    } while (PAYLOADLEN + 1 == rlen);
 
     f.close();
     printf("File transfer complete.\n");
