@@ -44,13 +44,13 @@ int main (int argc, char **argv) {
 
     UDPIPv4Socket sock (argv[1]);
 
-    Address addr;
+    IPv4Address addr;
     const size_t buflen = 1 << 10;
     char buf[buflen + 1];  /* +1 so we can always append a null */
     size_t rlen = buflen;
 
     /* The first message we receive is the file name requested. */
-    sock.recvFrom(addr, buf, rlen);
+    sock.recv(addr, buf, rlen);
     buf[rlen] = '\0';
 
     printf("%s requesting %s\n", addr.humanReadable().c_str(), buf);
@@ -69,9 +69,9 @@ int main (int argc, char **argv) {
         print_sent(buf);
         sleep(1);
 
-        Address next_addr;
+        IPv4Address next_addr;
         rlen = buflen;
-        bool rx = sock.timedRecvFrom(next_addr, buf, rlen, 1);
+        bool rx = sock.timedRecv(next_addr, buf, rlen, 1);
         if (!rx) {
             print_timeout(buf[0]);
             continue;

@@ -18,7 +18,7 @@ namespace {
 typedef int (*bind_or_connect_t)(int, const struct sockaddr *, socklen_t);
 
 /**
- * Constructor helper function.
+ * UDPIPv4Socket constructor helper function.
  */
 int ctorAux (int flags, const char *node, const char *service,
         bind_or_connect_t func) {
@@ -133,7 +133,7 @@ void UDPIPv4Socket::send (const char *buf, size_t buflen) const {
     }
 }
 
-void UDPIPv4Socket::send (const Address& addr, const char *buf, size_t buflen) const {
+void UDPIPv4Socket::send (const IPv4Address& addr, const char *buf, size_t buflen) const {
     ssize_t txlen = sendto(fd, static_cast<const void *>(buf), buflen, 0,
             addr.getSockaddr(), addr.getSockaddrLen());
 
@@ -142,8 +142,7 @@ void UDPIPv4Socket::send (const Address& addr, const char *buf, size_t buflen) c
     }
 }
 
-bool UDPIPv4Socket::timedRecvFrom (Address& addr, char *buf, size_t& buflen, int seconds) const {
-
+bool UDPIPv4Socket::timedRecv (IPv4Address& addr, char *buf, size_t& buflen, int seconds) const {
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(fd, &rfds);
@@ -164,14 +163,14 @@ bool UDPIPv4Socket::timedRecvFrom (Address& addr, char *buf, size_t& buflen, int
         return false;
     }
 
-    /* We can go ahead and recvfrom. */
+    /* No timer expired--we can go ahead and recvfrom. */
     assert(FD_ISSET(fd, &rfds));
 
-    recvFrom(addr, buf, buflen);
+    recv(addr, buf, buflen);
     return true;
 }
 
-void UDPIPv4Socket::recvFrom (Address& addr, char *buf, size_t& buflen) const {
+void UDPIPv4Socket::recv (IPv4Address& addr, char *buf, size_t& buflen) const {
     struct sockaddr_in src_addr;
     socklen_t addrlen = sizeof(src_addr);
     memset(&src_addr, 0, addrlen);
@@ -185,19 +184,25 @@ void UDPIPv4Socket::recvFrom (Address& addr, char *buf, size_t& buflen) const {
     }
 
     if (0 == rxlen) {
+        /* Does this even happen with UDP? */
         printf("Remote end performed orderly shutdown.\n");
     }
 
-    addr = Address(src_addr);
+    /* Set the output parameters. */
+    addr = IPv4Address(src_addr);
     buflen = rxlen;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
-std::string Address::humanReadable () const {
+std::string IPv4Address::humanReadable () const {
     char hbuf[NI_MAXHOST];
     char sbuf[NI_MAXSERV];
 
+    /* The two flags passed here tell getnameinfo always to return the service
+     * as a numeric port string, and not to fully-qualify host names on the
+     * local domain (otherwise, you'd see things like
+     * "localhost.localdomain", which is kind of annoying). */
     int rc = getnameinfo(getSockaddr(), getSockaddrLen(), hbuf, sizeof(hbuf),
             sbuf, sizeof(sbuf), NI_NUMERICSERV | NI_NOFQDN);
     if (-1 == rc) {

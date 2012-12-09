@@ -11,19 +11,28 @@
 
 #include <string>
 
+#define PAYLOADLEN 50
+
 //////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Return a string representation of the time now. The format parameter gets
+ * passed to strftime--see the man page.
+ */
 std::string timestring (const char *format);
 
 //////////////////////////////////////////////////////////////////////////////
 
-class Address {
+/**
+ * Container for an IPv4 sockaddr_in data structure.
+ */
+class IPv4Address {
 public:
-    Address () {
+    IPv4Address () {
         memset(&sin, 0, sizeof(sin));
     }
 
-    explicit Address (struct sockaddr_in s)
+    explicit IPv4Address (struct sockaddr_in s)
             : sin(s) { }
 
     const struct sockaddr *getSockaddr () const {
@@ -34,14 +43,17 @@ public:
         return sizeof(sin);
     }
 
+    /**
+     * Address in host:port string format.
+     */
     std::string humanReadable () const;
 
-    bool operator== (const Address& other) {
+    bool operator== (const IPv4Address& other) {
         return sin.sin_addr.s_addr == other.sin.sin_addr.s_addr
             && sin.sin_port == other.sin.sin_port;
     }
 
-    bool operator!= (const Address& other) {
+    bool operator!= (const IPv4Address& other) {
         return !(*this == other);
     }
 
@@ -79,25 +91,31 @@ public:
     }
 
     /**
-     * Send a buffer over a "connected" UDP socket.
+     * Send a buffer over a "connected" UDP socket. Primarily used by the
+     * client.
      */
     void send (const char *buf, size_t buflen) const;
 
     /**
      * Send a buffer over a UDP socket to an arbitrary address.
      */
-    void send (const Address& addr, const char *s, size_t buflen) const;
+    void send (const IPv4Address& addr, const char *buf, size_t buflen) const;
 
     /**
      * Block until a packet is received, or a timer expires. Return true if a
      * packet has been successfully received, false if the timer expired.
      * buflen is an in/out parameter--it should initially be set to the length
-     * of the buffer pointed to by buf; it will later be set to the actual
-     * number of bytes received.
+     * of the buffer pointed to by buf; on return it will hold the actual
+     * number of bytes written into buf.
      */
-    bool timedRecvFrom (Address& addr, char *buf, size_t& buflen, int seconds) const;
+    bool timedRecv (IPv4Address& addr, char *buf, size_t& buflen,
+            int seconds) const;
 
-    void recvFrom (Address& addr, char *buf, size_t& buflen) const;
+    /**
+     * Block until a packet is received. buflen has the same semantics as in
+     * timedRecv.
+     */
+    void recv (IPv4Address& addr, char *buf, size_t& buflen) const;
 
 private:
     int fd;

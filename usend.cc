@@ -26,7 +26,7 @@ void print_discard (char seq) {
     printf("Client discarding frame: Sequence number = %hhd, Time = %s\n", seq, timestring("%T").c_str());
 }
 
-void unreliableRecvFrom (const UDPIPv4Socket& sock, Address& addr,
+void unreliableRecv (const UDPIPv4Socket& sock, IPv4Address& addr,
         char *buf, size_t& buflen) {
     int rxd_packets = 0;
 
@@ -36,7 +36,7 @@ void unreliableRecvFrom (const UDPIPv4Socket& sock, Address& addr,
             print_discard(buf[0]);
         }
         rlen = buflen;
-        sock.recvFrom(addr, buf, rlen);
+        sock.recv(addr, buf, rlen);
         rxd_packets++;
     } while (!(rand() % 4));
 
@@ -55,11 +55,11 @@ int main (int argc, char **argv) {
 
     sock.send(argv[3], strlen(argv[3]));
 
-    Address addr;
+    IPv4Address addr;
     const size_t buflen = 1 << 10;
     char buf[buflen + 1];
     size_t rlen = buflen;
-    sock.recvFrom(addr, buf, rlen);
+    sock.recv(addr, buf, rlen);
     assert(51 == rlen);
     print_receipt(buf);
 
@@ -69,9 +69,9 @@ int main (int argc, char **argv) {
     print_sent(buf[0]);
 
     while (true) {
-        Address next_addr;
+        IPv4Address next_addr;
         rlen = buflen;
-        unreliableRecvFrom(sock, next_addr, buf, rlen);
+        unreliableRecv(sock, next_addr, buf, rlen);
         print_receipt(buf);
 
         if (next_addr != addr) {
