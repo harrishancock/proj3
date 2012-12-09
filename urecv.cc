@@ -17,6 +17,21 @@ void usage (const char *program) {
     printf("Usage: %s <port>\n", program);
 }
 
+void print_sent (const char *buf) {
+    printf("Server sent frame: Sequence number = %hhd, Time = %s, Packet contents = %c%c%c%c%c\n",
+            buf[0], timestring("%T").c_str(), buf[1], buf[2], buf[3], buf[4], buf[5]);
+}
+
+void print_receipt (char seq) {
+    printf("Server received ACK: Sequence number = %hhd, Time = %s\n",
+            seq, timestring("%T").c_str());
+}
+
+void print_timeout (char seq) {
+    printf("Server timeout: Sequence number = %hhd, Time = %s\n",
+            seq, timestring("%T").c_str());
+}
+
 } // file scope namespace
 
 //////////////////////////////////////////////////////////////////////////////
@@ -36,7 +51,6 @@ int main (int argc, char **argv) {
 
     /* The first message we receive is the file name requested. */
     sock.recvFrom(addr, buf, rlen);
-    printf("recv\n");
     buf[rlen] = '\0';
 
     printf("%s requesting %s\n", addr.humanReadable().c_str(), buf);
@@ -52,19 +66,17 @@ int main (int argc, char **argv) {
     f.read(buf + 1, 50);
     while (!f.eof()) {
         sock.send(addr, buf, 51);
+        print_sent(buf);
         sleep(1);
-        printf("send\n");
 
         Address next_addr;
         rlen = buflen;
         bool rx = sock.timedRecvFrom(next_addr, buf, rlen, 1);
-        printf("recv\n");
         if (!rx) {
-            printf("timed out\n");
-            /* Timed out, re-send. */
+            print_timeout(buf[0]);
             continue;
         }
-        printf("got ack\n");
+        print_receipt(buf[0]);
 
         assert(next_addr == addr);
         assert(rlen == 1);
