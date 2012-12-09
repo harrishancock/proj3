@@ -1,5 +1,12 @@
 /* urecv.cc */
 
+/* 
+ * Hancock, Harris
+ * CS 3590
+ * 8 December 2012
+ * Project #3: Write a file transfer client/server.
+ */
+
 #include "common.hh"
 
 #include <unistd.h>
@@ -19,8 +26,10 @@ void usage (const char *program) {
 }
 
 void print_sent (const char *buf) {
-    printf("Server sent frame: Sequence number = %hhd, Time = %s, Packet contents = %c%c%c%c%c\n",
-            buf[0], timestring("%T").c_str(), buf[1], buf[2], buf[3], buf[4], buf[5]);
+    printf("Server sent frame: Sequence number = %hhd, Time = %s, "
+            "Packet contents = %c%c%c%c%c\n",
+            buf[0], timestring("%T").c_str(),
+            buf[1], buf[2], buf[3], buf[4], buf[5]);
 }
 
 void print_receipt (char seq) {

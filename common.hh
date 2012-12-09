@@ -1,5 +1,12 @@
 /* common.hh */
 
+/* 
+ * Hancock, Harris
+ * CS 3590
+ * 8 December 2012
+ * Project #3: Write a file transfer client/server.
+ */
+
 #ifndef CS3590_PROJ3_COMMON_HH
 #define CS3590_PROJ3_COMMON_HH
 

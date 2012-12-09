@@ -1,5 +1,12 @@
 /* common.cc */
 
+/* 
+ * Hancock, Harris
+ * CS 3590
+ * 8 December 2012
+ * Project #3: Write a file transfer client/server.
+ */
+
 #include "common.hh"
 
 #include <sys/types.h>
@@ -133,7 +140,8 @@ void UDPIPv4Socket::send (const char *buf, size_t buflen) const {
     }
 }
 
-void UDPIPv4Socket::send (const IPv4Address& addr, const char *buf, size_t buflen) const {
+void UDPIPv4Socket::send (const IPv4Address& addr,
+        const char *buf, size_t buflen) const {
     ssize_t txlen = sendto(fd, static_cast<const void *>(buf), buflen, 0,
             addr.getSockaddr(), addr.getSockaddrLen());
 
@@ -142,7 +150,8 @@ void UDPIPv4Socket::send (const IPv4Address& addr, const char *buf, size_t bufle
     }
 }
 
-bool UDPIPv4Socket::timedRecv (IPv4Address& addr, char *buf, size_t& buflen, int seconds) const {
+bool UDPIPv4Socket::timedRecv (IPv4Address& addr,
+        char *buf, size_t& buflen, int seconds) const {
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(fd, &rfds);

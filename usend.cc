@@ -1,5 +1,12 @@
 /* usend.cc */
 
+/* 
+ * Hancock, Harris
+ * CS 3590
+ * 8 December 2012
+ * Project #3: Write a file transfer client/server.
+ */
+
 #include "common.hh"
 
 #include <cstdio>
@@ -15,16 +22,20 @@ void usage (const char *program) {
 }
 
 void print_receipt (const char *buf) {
-    printf("Client received frame: Sequence number = %hhd, Time = %s, Packet contents = %c%c%c%c%c\n",
-            buf[0], timestring("%T").c_str(), buf[1], buf[2], buf[3], buf[4], buf[5]);
+    printf("Client received frame: Sequence number = %hhd, Time = %s, "
+            "Packet contents = %c%c%c%c%c\n",
+            buf[0], timestring("%T").c_str(),
+            buf[1], buf[2], buf[3], buf[4], buf[5]);
 }
 
 void print_sent (char seq) {
-    printf("Client sent ACK: Sequence number = %hhd, Time = %s\n", seq, timestring("%T").c_str());
+    printf("Client sent ACK: Sequence number = %hhd, Time = %s\n",
+            seq, timestring("%T").c_str());
 }
 
 void print_discard (char seq) {
-    printf("Client discarding frame: Sequence number = %hhd, Time = %s\n", seq, timestring("%T").c_str());
+    printf("Client discarding frame: Sequence number = %hhd, Time = %s\n",
+            seq, timestring("%T").c_str());
 }
 
 void unreliableRecv (const UDPIPv4Socket& sock, IPv4Address& addr,
