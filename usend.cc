@@ -13,12 +13,28 @@ void usage (const char *program) {
     printf("Usage: %s <host> <port> <file>\n", program);
 }
 
+void print_receipt (const char *buf) {
+    printf("Client received frame: Sequence number = %hhd, Time = %s, Packet contents = %c%c%c%c%c\n",
+            buf[0], timestring("%T").c_str(), buf[1], buf[2], buf[3], buf[4], buf[5]);
+}
+
+void print_sent (char seq) {
+    printf("Client sent ACK: Sequence number = %hhd, Time = %s\n", seq, timestring("%T").c_str());
+}
+
+void print_discard (char seq) {
+    printf("Client discarding frame: Sequence number = %hhd, Time = %s\n", seq, timestring("%T").c_str());
+}
+
 void unreliableRecvFrom (const UDPIPv4Socket& sock, Address& addr,
         char *buf, size_t buflen) {
     int rxd_packets = 0;
 
     size_t rlen;
     do {
+        if (rxd_packets) {
+            print_discard(buf[0]);
+        }
         rlen = buflen;
         sock.recvFrom(addr, buf, rlen);
         rxd_packets++;
@@ -44,24 +60,26 @@ int main (int argc, char **argv) {
     char buf[buflen + 1];
     size_t rlen = buflen;
     sock.recvFrom(addr, buf, rlen);
-    printf("recv\n");
     assert(51 == rlen);
+    print_receipt(buf);
 
     /* Store the next sequence number and return the current one as an ACK. */
     char seq = buf[0] + 1;
     sock.send(buf, 1);
-    printf("send\n");
+    print_sent(buf[0]);
 
     while (true) {
         Address next_addr;
         rlen = buflen;
         sock.recvFrom(next_addr, buf, rlen);
-        printf("recv\n");
+        print_receipt(buf);
 
+#if 0
         if (next_addr != addr) {
             /* Ignore packets from any other address. */
             continue;
         }
+#endif
 
         if (buf[0] != seq) {
             /* Ignore out-of-sequence packets. */
@@ -75,7 +93,7 @@ int main (int argc, char **argv) {
 
         seq++;
         sock.send(buf, 1);
-        printf("send\n");
+        print_sent(buf[0]);
     }
 
     return 0;

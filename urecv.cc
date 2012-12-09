@@ -2,9 +2,14 @@
 
 #include "common.hh"
 
+#include <unistd.h>
+
 #include <cstdio>
+#include <cassert>
 
 #include <fstream>
+
+#define TIMEOUT 20  // milliseconds
 
 namespace {
 
@@ -43,29 +48,31 @@ int main (int argc, char **argv) {
     }
 
     char seq = 0;
+    buf[0] = seq;
+    f.read(buf + 1, 50);
     while (!f.eof()) {
-        buf[0] = seq;
-        f.read(buf + 1, 50);
-
         sock.send(addr, buf, 51);
+        sleep(1);
         printf("send\n");
 
-        do {
-            Address next_addr;
-            rlen = buflen;
-            sock.recvFrom(next_addr, buf, rlen);
-            printf("recv\n");
-            
-            if (next_addr != addr) {
-                continue;
-            }
+        Address next_addr;
+        rlen = buflen;
+        bool rx = sock.timedRecvFrom(next_addr, buf, rlen, 1);
+        printf("recv\n");
+        if (!rx) {
+            printf("timed out\n");
+            /* Timed out, re-send. */
+            continue;
+        }
+        printf("got ack\n");
 
-            if (1 != rlen) {
-                continue;
-            }
+        assert(next_addr == addr);
+        assert(rlen == 1);
+        assert(buf[0] == seq);
 
-        } while (buf[0] != seq);
         seq++;
+        buf[0] = seq;
+        f.read(buf + 1, 50);
     }
 
     return 0;
