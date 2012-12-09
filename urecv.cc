@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <cassert>
 
 #include <fstream>
@@ -52,7 +53,7 @@ int main (int argc, char **argv) {
         return 1;
     }
 
-    UDPIPv4Socket sock (argv[1]);
+    UDPIPv4Socket sock (atoi(argv[1]));
 
     IPv4Address addr;
     const size_t buflen = PAYLOADLEN + 1;   /* +1 for header */

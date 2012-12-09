@@ -42,6 +42,8 @@ public:
     explicit IPv4Address (struct sockaddr_in s)
             : sin(s) { }
 
+    IPv4Address (const char *host, uint16_t port);
+
     const struct sockaddr *getSockaddr () const {
         return reinterpret_cast<const struct sockaddr *>(&sin);
     }
@@ -76,28 +78,11 @@ private:
 class UDPIPv4Socket {
 public:
     /**
-     * Create a passive socket bound to INADDR_ANY on the port specified (i.e.,
-     * a server socket).
+     * Create a passive socket bound to INADDR_ANY on the port specified.
      */
-    explicit UDPIPv4Socket (const char *port);
-
-    /**
-     * Create a socket "connected" to the host/port specified (i.e., a client
-     * socket).
-     */
-    UDPIPv4Socket (const char *host, const char *port);
+    explicit UDPIPv4Socket (uint16_t port);
 
     ~UDPIPv4Socket ();
-
-    bool isConnected () const {
-        return connected;
-    }
-
-    /**
-     * Send a buffer over a "connected" UDP socket. Primarily used by the
-     * client.
-     */
-    void send (const char *buf, size_t buflen) const;
 
     /**
      * Send a buffer over a UDP socket to an arbitrary address.
@@ -126,7 +111,6 @@ private:
     UDPIPv4Socket& operator= (const UDPIPv4Socket&);
 
     int fd;
-    bool connected;
 };
 
 #endif

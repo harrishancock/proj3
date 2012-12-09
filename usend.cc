@@ -76,19 +76,23 @@ int main (int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    printf("Connecting to %s:%s\n", host, port);
-    UDPIPv4Socket sock (host, port);
+    UDPIPv4Socket sock (0);
+    IPv4Address dest (host, atoi(port));
 
-    printf("Requesting file %s\n", file);
-    sock.send(file, strlen(file));
+    printf("Requesting file %s from %s:%s\n", file, host, port);
+    sock.send(dest, file, strlen(file));
 
     IPv4Address addr;
     const size_t buflen = PAYLOADLEN + 1;   /* +1 for header */
     char buf[buflen];
 
-    /* rlen will be used as an output parameter, so copy buflen. */
-    size_t rlen = buflen;
-    sock.recv(addr, buf, rlen);
+    size_t rlen;
+    do {
+        /* rlen will be used as an output parameter, so copy buflen. */
+        rlen = buflen;
+        unreliableRecv(sock, addr, buf, rlen);
+    } while (addr != dest);
+
     print_receipt(buf);
 
     f.write(buf + 1, rlen - 1);
@@ -98,16 +102,15 @@ int main (int argc, char **argv) {
     /* Only loop if we received a fully-loaded frame. */
     while (PAYLOADLEN + 1 == rlen) {
         /* ACK the previous frame. */
-        sock.send(buf, 1);
+        sock.send(dest, buf, 1);
         print_sent(buf[0]);
 
         /* Wait for the next frame. */
         seq++;
-        IPv4Address next_addr;
         rlen = buflen;
-        unreliableRecv(sock, next_addr, buf, rlen);
+        unreliableRecv(sock, addr, buf, rlen);
 
-        if (next_addr != addr) {
+        if (addr != dest) {
             printf("packet arrived from incorrect address\n");
             continue;
         }
@@ -124,7 +127,7 @@ int main (int argc, char **argv) {
     }
 
     /* The last ACK. */
-    sock.send(buf, 1);
+    sock.send(dest, buf, 1);
     print_sent(buf[0]);
 
     f.close();

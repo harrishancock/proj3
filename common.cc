@@ -20,73 +20,6 @@
 #include <cstring>
 #include <cstdlib>
 
-namespace {
-
-typedef int (*bind_or_connect_t)(int, const struct sockaddr *, socklen_t);
-
-/**
- * UDPIPv4Socket constructor helper function.
- */
-int ctorAux (int flags, const char *node, const char *service,
-        bind_or_connect_t func) {
-    assert(&::bind == func || &::connect == func);
-
-   /* The following code is largely lifted from the getaddrinfo(3) man page.
-    * getaddrinfo provides a handy-dandy way to factor server socket creation
-    * and client socket creation into the same common code. */
-
-   struct addrinfo hints;
-   memset(&hints, 0, sizeof(hints));
-   hints.ai_family = AF_INET;
-   hints.ai_socktype = SOCK_DGRAM;
-   hints.ai_flags = flags;
-   hints.ai_protocol = 0;
-   hints.ai_canonname = NULL;
-   hints.ai_addr = NULL;
-   hints.ai_next = NULL;
-
-   struct addrinfo *results;
-
-   int rc = getaddrinfo(node, service, &hints, &results);
-   if (0 != rc) {
-       fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rc));
-       exit(EXIT_FAILURE);
-   }
-
-   struct addrinfo *rp;
-   int fd;
-
-   for (rp = results; rp; rp = rp->ai_next) {
-       fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-       if (-1 == fd) {
-           continue;
-       }
-
-       /* We take advantage of the fact that both bind and connect share the
-        * same type signature, and both return 0 on success. */
-       rc = func(fd, rp->ai_addr, rp->ai_addrlen);
-       if (0 == rc) {
-           break;
-       }
-       
-       /* We haven't sent anything, so the return value of close is
-        * irrelevant. */
-       close(fd);
-   }
-
-   if (!rp) {
-       fprintf(stderr, "Unable to create socket.\n");
-       exit(EXIT_FAILURE);
-   }
-
-   freeaddrinfo(results);
-
-   return fd;
-}
-
-
-} // file scope namespace
-
 //////////////////////////////////////////////////////////////////////////////
 
 std::string timestring (const char *format) {
@@ -110,13 +43,26 @@ std::string timestring (const char *format) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-UDPIPv4Socket::UDPIPv4Socket (const char *port)
-        : fd(ctorAux(AI_PASSIVE, NULL, port, &::bind))
-        , connected(false) { }
+UDPIPv4Socket::UDPIPv4Socket (uint16_t port)
+        : fd(0) {
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (-1 == fd) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
 
-UDPIPv4Socket::UDPIPv4Socket (const char *host, const char *port)
-        : fd(ctorAux(0, host, port, &::connect))
-        , connected(true) { }
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons(port);
+    
+    int rc = bind(fd, reinterpret_cast<struct sockaddr *>(&sin), sizeof(sin));
+    if (-1 == rc) {
+        perror("bind");
+        exit(EXIT_FAILURE);
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -129,16 +75,6 @@ UDPIPv4Socket::~UDPIPv4Socket () {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-
-void UDPIPv4Socket::send (const char *buf, size_t buflen) const {
-    assert(connected);
-
-    ssize_t txlen = ::send(fd, static_cast<const void *>(buf), buflen, 0);
-
-    if (-1 == txlen) {
-        perror("send");
-    }
-}
 
 void UDPIPv4Socket::send (const IPv4Address& addr,
         const char *buf, size_t buflen) const {
@@ -200,6 +136,21 @@ void UDPIPv4Socket::recv (IPv4Address& addr, char *buf, size_t& buflen) const {
     /* Set the output parameters. */
     addr = IPv4Address(src_addr);
     buflen = rxlen;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+IPv4Address::IPv4Address (const char *host, uint16_t port) {
+    struct hostent *hp;
+    hp = gethostbyname(host);
+    if (!hp) {
+        fprintf(stderr, "gethostbyname: %s\n", hstrerror(h_errno));
+        exit(EXIT_FAILURE);
+    }
+
+    sin.sin_family = AF_INET;
+    memcpy(&sin.sin_addr, hp->h_addr, hp->h_length);
+    sin.sin_port = htons(port);
 }
 
 //////////////////////////////////////////////////////////////////////////////
