@@ -13,6 +13,20 @@ void usage (const char *program) {
     printf("Usage: %s <host> <port> <file>\n", program);
 }
 
+void unreliableRecvFrom (const UDPIPv4Socket& sock, Address& addr,
+        char *buf, size_t buflen) {
+    int rxd_packets = 0;
+
+    size_t rlen;
+    do {
+        rlen = buflen;
+        sock.recvFrom(addr, buf, rlen);
+        rxd_packets++;
+    } while (!(rand() % 4));
+
+    buflen = rlen;
+}
+
 } // file scope namespace
 
 int main (int argc, char **argv) {
