@@ -27,7 +27,7 @@ void print_discard (char seq) {
 }
 
 void unreliableRecvFrom (const UDPIPv4Socket& sock, Address& addr,
-        char *buf, size_t buflen) {
+        char *buf, size_t& buflen) {
     int rxd_packets = 0;
 
     size_t rlen;
@@ -71,23 +71,21 @@ int main (int argc, char **argv) {
     while (true) {
         Address next_addr;
         rlen = buflen;
-        sock.recvFrom(next_addr, buf, rlen);
+        unreliableRecvFrom(sock, next_addr, buf, rlen);
         print_receipt(buf);
 
-#if 0
         if (next_addr != addr) {
-            /* Ignore packets from any other address. */
+            printf("packet from other address\n");
             continue;
         }
-#endif
 
         if (buf[0] != seq) {
-            /* Ignore out-of-sequence packets. */
+            printf("out-of-sequence packet\n");
             continue;
         }
 
         if (51 != rlen) {
-            /* File transfer complete. */
+            printf("file transfer complete\n");
             break;
         }
 
