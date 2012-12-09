@@ -3,50 +3,66 @@
 #include "common.hh"
 
 #include <cstdio>
+#include <cassert>
 
 #include <string>
 
 namespace {
 
 void usage (const char *program) {
-    printf("Usage: %s <host> <port>\n", program);
+    printf("Usage: %s <host> <port> <file>\n", program);
 }
 
 } // file scope namespace
 
 int main (int argc, char **argv) {
-    if (argc < 3) {
+    if (argc < 4) {
         usage(argv[0]);
         return 1;
     }
 
     UDPIPv4Socket sock (argv[1], argv[2]);
 
-    std::string hworld ("Hello, world!");
-    sock.send(reinterpret_cast<const unsigned char *>(hworld.c_str()), hworld.size());
-#if 0
+    sock.send(argv[3], strlen(argv[3]));
 
-    const char *buf = "Hello, world!";
-    const size_t buflen = strlen(buf);
+    Address addr;
+    const size_t buflen = 1 << 10;
+    char buf[buflen + 1];
+    size_t rlen = buflen;
+    sock.recvFrom(addr, buf, rlen);
+    printf("recv\n");
+    assert(51 == rlen);
 
-    ssize_t txlen = send(fd, static_cast<const void *>(buf), buflen, 0);
+    /* Store the next sequence number and return the current one as an ACK. */
+    char seq = buf[0] + 1;
+    sock.send(buf, 1);
+    printf("send\n");
 
-    if (-1 == txlen) {
-        perror("send");
-        return 1;
+    while (true) {
+        Address next_addr;
+        rlen = buflen;
+        sock.recvFrom(next_addr, buf, rlen);
+        printf("recv\n");
+
+        if (next_addr != addr) {
+            /* Ignore packets from any other address. */
+            continue;
+        }
+
+        if (buf[0] != seq) {
+            /* Ignore out-of-sequence packets. */
+            continue;
+        }
+
+        if (51 != rlen) {
+            /* File transfer complete. */
+            break;
+        }
+
+        seq++;
+        sock.send(buf, 1);
+        printf("send\n");
     }
-    printf("sent %zd bytes\n", txlen);
-#if 0
-    printf("sent %zd bytes to %s:%d\n", txlen, inet_ntop(results->ai_addr),
-            ntohs(src_addr.sin_port));
-#endif
-
-    rc = close(fd);
-    if (-1 == rc) {
-        perror("close");
-        return 1;
-    }
-#endif
 
     return 0;
 }

@@ -9,6 +9,8 @@
 
 #include <cstring>
 
+#include <string>
+
 //////////////////////////////////////////////////////////////////////////////
 
 class Address {
@@ -26,6 +28,17 @@ public:
 
     socklen_t getSockaddrLen () const {
         return sizeof(sin);
+    }
+
+    std::string humanReadable () const;
+
+    bool operator== (const Address& other) {
+        return sin.sin_addr.s_addr == other.sin.sin_addr.s_addr
+            && sin.sin_port == other.sin.sin_port;
+    }
+
+    bool operator!= (const Address& other) {
+        return !(*this == other);
     }
 
 private:
@@ -131,12 +144,12 @@ public:
     /**
      * Send a buffer over a "connected" UDP socket.
      */
-    void send (const unsigned char *buf, size_t buflen) const;
+    void send (const char *buf, size_t buflen) const;
 
     /**
      * Send a buffer over a UDP socket to an arbitrary address.
      */
-    void send (const Address& addr, const unsigned char *s, size_t buflen) const;
+    void send (const Address& addr, const char *s, size_t buflen) const;
 
     /**
      * Block until a packet is received, or a timer expires. Return true if a
@@ -145,9 +158,9 @@ public:
      * of the buffer pointed to by buf; it will later be set to the actual
      * number of bytes received.
      */
-    bool timedRecvFrom (Address& addr, unsigned char *buf, size_t& buflen, int microseconds) const;
+    bool timedRecvFrom (Address& addr, char *buf, size_t& buflen, int microseconds) const;
 
-    void recvFrom (Address& addr, unsigned char *buf, size_t& buflen) const;
+    void recvFrom (Address& addr, char *buf, size_t& buflen) const;
 
 private:
     int fd;

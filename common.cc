@@ -102,32 +102,26 @@ UDPIPv4Socket::~UDPIPv4Socket () {
 
 //////////////////////////////////////////////////////////////////////////////
 
-void UDPIPv4Socket::send (const unsigned char *buf, size_t buflen) const {
+void UDPIPv4Socket::send (const char *buf, size_t buflen) const {
     assert(connected);
 
-    size_t txlen = ::send(fd, static_cast<const void *>(buf), buflen, 0);
+    ssize_t txlen = ::send(fd, static_cast<const void *>(buf), buflen, 0);
 
     if (-1 == txlen) {
         perror("send");
     }
-    else {
-        printf("%zu bytes sent\n", txlen);
-    }
 }
 
-void UDPIPv4Socket::send (const Address& addr, const unsigned char *buf, size_t buflen) const {
-    size_t txlen = sendto(fd, static_cast<const void *>(buf), buflen, 0,
+void UDPIPv4Socket::send (const Address& addr, const char *buf, size_t buflen) const {
+    ssize_t txlen = sendto(fd, static_cast<const void *>(buf), buflen, 0,
             addr.getSockaddr(), addr.getSockaddrLen());
 
     if (-1 == txlen) {
         perror("sendto");
     }
-    else {
-        printf("%zu bytes sent\n", txlen);
-    }
 }
 
-bool UDPIPv4Socket::timedRecvFrom (Address& addr, unsigned char *buf, size_t& buflen, int microseconds) const {
+bool UDPIPv4Socket::timedRecvFrom (Address& addr, char *buf, size_t& buflen, int microseconds) const {
 
     fd_set rfds;
     FD_ZERO(&rfds);
@@ -156,7 +150,7 @@ bool UDPIPv4Socket::timedRecvFrom (Address& addr, unsigned char *buf, size_t& bu
     return true;
 }
 
-void UDPIPv4Socket::recvFrom (Address& addr, unsigned char *buf, size_t& buflen) const {
+void UDPIPv4Socket::recvFrom (Address& addr, char *buf, size_t& buflen) const {
     struct sockaddr_in src_addr;
     socklen_t addrlen = sizeof(src_addr);
     memset(&src_addr, 0, addrlen);
@@ -175,8 +169,19 @@ void UDPIPv4Socket::recvFrom (Address& addr, unsigned char *buf, size_t& buflen)
 
     addr = Address(src_addr);
     buflen = rxlen;
+}
 
-    char s[INET_ADDRSTRLEN];
-    printf("received %zd bytes from %s:%d\n", rxlen, inet_ntop(AF_INET, &src_addr.sin_addr, s, INET_ADDRSTRLEN),
-            ntohs(src_addr.sin_port));
+//////////////////////////////////////////////////////////////////////////////
+
+std::string Address::humanReadable () const {
+    char hbuf[NI_MAXHOST];
+    char sbuf[NI_MAXSERV];
+
+    int rc = getnameinfo(getSockaddr(), getSockaddrLen(), hbuf, sizeof(hbuf),
+            sbuf, sizeof(sbuf), NI_NUMERICSERV | NI_NOFQDN);
+    if (-1 == rc) {
+        perror("getnameinfo");
+        exit(EXIT_FAILURE);
+    }
+    return std::string(hbuf) + ":" + std::string(sbuf);
 }

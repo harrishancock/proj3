@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++0x
+CXXFLAGS = -std=c++0x -Wall
 CXX = g++
 
 all: urecv usend
