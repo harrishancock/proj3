@@ -73,9 +73,9 @@ int main (int argc, char **argv) {
 
     /* Read the whole file all at once. */
     ssize_t filesize = f.tellg();
-    std::shared_ptr<char> fmem (new char [filesize]);
+    char *fmem = new char [filesize];
     f.seekg(0, std::ios::beg);
-    f.read(fmem.get(), filesize);
+    f.read(fmem, filesize);
     f.close();
 
     ssize_t filepos = 0;
@@ -88,7 +88,7 @@ int main (int argc, char **argv) {
         buf[0] = seq;
 
         rlen = std::min(filesize - filepos, static_cast<ssize_t>(PAYLOADLEN));
-        memcpy(buf + 1, fmem.get() + filepos, rlen);
+        memcpy(buf + 1, fmem + filepos, rlen);
         /* Don't increment filepos yet--only after we get an ACK. */
 
         sock.send(addr, buf, rlen + 1);
@@ -131,6 +131,7 @@ int main (int argc, char **argv) {
         filepos += PAYLOADLEN;
     }
 
+    delete fmem;
     printf("File transfer complete.\n");
 
     return 0;

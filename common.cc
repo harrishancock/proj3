@@ -41,9 +41,9 @@ int ctorAux (int flags, const char *node, const char *service,
    hints.ai_socktype = SOCK_DGRAM;
    hints.ai_flags = flags;
    hints.ai_protocol = 0;
-   hints.ai_canonname = nullptr;
-   hints.ai_addr = nullptr;
-   hints.ai_next = nullptr;
+   hints.ai_canonname = NULL;
+   hints.ai_addr = NULL;
+   hints.ai_next = NULL;
 
    struct addrinfo *results;
 
@@ -92,8 +92,8 @@ int ctorAux (int flags, const char *node, const char *service,
 std::string timestring (const char *format) {
     char s[200];
 
-    auto t = time(nullptr);
-    auto tmp = localtime(&t);
+    time_t t = time(NULL);
+    struct tm *tmp = localtime(&t);
     if (!tmp) {
         perror("localtime");
         exit(EXIT_FAILURE);
@@ -111,7 +111,7 @@ std::string timestring (const char *format) {
 //////////////////////////////////////////////////////////////////////////////
 
 UDPIPv4Socket::UDPIPv4Socket (const char *port)
-        : fd(ctorAux(AI_PASSIVE, nullptr, port, &::bind))
+        : fd(ctorAux(AI_PASSIVE, NULL, port, &::bind))
         , connected(false) { }
 
 UDPIPv4Socket::UDPIPv4Socket (const char *host, const char *port)
@@ -160,7 +160,7 @@ bool UDPIPv4Socket::timedRecv (IPv4Address& addr,
     tv.tv_sec = seconds;
     tv.tv_usec = 0;
 
-    int rc = select(fd + 1, &rfds, nullptr, nullptr, &tv);
+    int rc = select(fd + 1, &rfds, NULL, NULL, &tv);
 
     if (-1 == rc) {
         perror("select");

@@ -11,6 +11,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <cstdlib>
 
 #include <string>
 #include <fstream>
@@ -58,7 +59,7 @@ void unreliableRecv (const UDPIPv4Socket& sock, IPv4Address& addr,
 } // file scope namespace
 
 int main (int argc, char **argv) {
-    srand(time(nullptr));
+    srand(time(NULL));
 
     if (argc < 4) {
         usage(argv[0]);
@@ -69,7 +70,7 @@ int main (int argc, char **argv) {
     const char *port = argv[2];
     const char *file = argv[3];
 
-    std::ofstream f (std::string(file) + ".out");
+    std::ofstream f ((std::string(file) + ".out").c_str());
     if (!f.good()) {
         fprintf(stderr, "Unable to open file %s.out for writing.\n", file);
         exit(EXIT_FAILURE);

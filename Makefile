@@ -1,4 +1,5 @@
-CXXFLAGS = -std=c++0x -Wall
+CXXFLAGS = -Wall
+#-std=c++0x -Wall
 CXX = g++
 
 .SUFFIXES:

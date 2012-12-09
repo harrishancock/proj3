@@ -75,10 +75,6 @@ private:
  */
 class UDPIPv4Socket {
 public:
-    /* non-copyable */
-    UDPIPv4Socket (const UDPIPv4Socket&) = delete;
-    UDPIPv4Socket& operator= (const UDPIPv4Socket&) = delete;
-
     /**
      * Create a passive socket bound to INADDR_ANY on the port specified (i.e.,
      * a server socket).
@@ -125,6 +121,10 @@ public:
     void recv (IPv4Address& addr, char *buf, size_t& buflen) const;
 
 private:
+    /* non-copyable */
+    UDPIPv4Socket (const UDPIPv4Socket&);
+    UDPIPv4Socket& operator= (const UDPIPv4Socket&);
+
     int fd;
     bool connected;
 };
