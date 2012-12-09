@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include <string>
+#include <fstream>
 
 namespace {
 
@@ -46,36 +47,56 @@ void unreliableRecv (const UDPIPv4Socket& sock, IPv4Address& addr,
 } // file scope namespace
 
 int main (int argc, char **argv) {
+    srand(time(nullptr));
+
     if (argc < 4) {
         usage(argv[0]);
         return 1;
     }
 
-    UDPIPv4Socket sock (argv[1], argv[2]);
+    const char *host = argv[1];
+    const char *port = argv[2];
+    const char *file = argv[3];
 
-    sock.send(argv[3], strlen(argv[3]));
+    std::ofstream f (std::string(file) + ".out");
+    if (!f.good()) {
+        fprintf(stderr, "Unable to open file %s.out for writing.\n", file);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Connecting to %s:%s\n", host, port);
+    UDPIPv4Socket sock (host, port);
+
+    printf("Requesting file %s\n", file);
+    sock.send(file, strlen(file));
 
     IPv4Address addr;
-    const size_t buflen = 1 << 10;
-    char buf[buflen + 1];
+    const size_t buflen = PAYLOADLEN + 1;   /* +1 for header */
+    char buf[buflen];
+
+    /* rlen will be used as an output parameter, so copy buflen. */
     size_t rlen = buflen;
     sock.recv(addr, buf, rlen);
-    assert(51 == rlen);
     print_receipt(buf);
 
-    /* Store the next sequence number and return the current one as an ACK. */
-    char seq = buf[0] + 1;
-    sock.send(buf, 1);
-    print_sent(buf[0]);
+    f.write(buf + 1, rlen - 1);
 
-    while (true) {
+    char seq = buf[0];
+
+    /* Only loop if we received a fully-loaded frame. */
+    while (PAYLOADLEN + 1 == rlen) {
+        /* ACK the previous frame. */
+        sock.send(buf, 1);
+        print_sent(buf[0]);
+
+        /* Wait for the next frame. */
+        seq++;
         IPv4Address next_addr;
         rlen = buflen;
         unreliableRecv(sock, next_addr, buf, rlen);
-        print_receipt(buf);
 
         if (next_addr != addr) {
-            printf("packet from other address\n");
+            printf("packet arrived from incorrect address\n");
             continue;
         }
 
@@ -84,15 +105,18 @@ int main (int argc, char **argv) {
             continue;
         }
 
-        if (51 != rlen) {
-            printf("file transfer complete\n");
-            break;
-        }
+        print_receipt(buf);
 
-        seq++;
-        sock.send(buf, 1);
-        print_sent(buf[0]);
+        /* Seems to check out okay--write it. */
+        f.write(buf + 1, rlen - 1);
     }
+
+    /* The last ACK. */
+    sock.send(buf, 1);
+    print_sent(buf[0]);
+
+    f.close();
+    printf("File transfer complete.\n");
 
     return 0;
 }

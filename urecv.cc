@@ -8,6 +8,7 @@
 #include <cassert>
 
 #include <fstream>
+#include <memory>
 
 #define TIMEOUT 20  // milliseconds
 
@@ -45,7 +46,7 @@ int main (int argc, char **argv) {
     UDPIPv4Socket sock (argv[1]);
 
     IPv4Address addr;
-    const size_t buflen = 1 << 10;
+    const size_t buflen = PAYLOADLEN + 1;   /* +1 for header */
     char buf[buflen + 1];  /* +1 so we can always append a null */
     size_t rlen = buflen;
 
@@ -53,39 +54,75 @@ int main (int argc, char **argv) {
     sock.recv(addr, buf, rlen);
     buf[rlen] = '\0';
 
-    printf("%s requesting %s\n", addr.humanReadable().c_str(), buf);
+    printf("%s requesting file %s\n", addr.humanReadable().c_str(), buf);
 
-    std::ifstream f (buf);
+    std::ifstream f (buf, std::ios::in | std::ios::ate);
     if (!f.good()) {
         printf("File not available\n");
         return 1;
     }
 
+    /* Read the whole file all at once. */
+    ssize_t filesize = f.tellg();
+    std::shared_ptr<char> fmem (new char [filesize]);
+    f.seekg(0, std::ios::beg);
+    f.read(fmem.get(), filesize);
+    f.close();
+
+    ssize_t filepos = 0;
     char seq = 0;
-    buf[0] = seq;
-    f.read(buf + 1, 50);
-    while (!f.eof()) {
-        sock.send(addr, buf, 51);
+
+    /* Loop only while we have frames to send. A zero-length payload is valid,
+     * as this is the only way to signify the end of a file to the client, if
+     * the file is a multiple of PAYLOADLEN. */
+    while (0 <= filesize - filepos) {
+        buf[0] = seq;
+
+        rlen = std::min(filesize - filepos, static_cast<ssize_t>(PAYLOADLEN));
+        memcpy(buf + 1, fmem.get() + filepos, rlen);
+        /* Don't increment filepos yet--only after we get an ACK. */
+
+        sock.send(addr, buf, rlen + 1);
         print_sent(buf);
+
+        /* The sleep here counts towards the 2-second timeout. */
         sleep(1);
 
         IPv4Address next_addr;
         rlen = buflen;
-        bool rx = sock.timedRecv(next_addr, buf, rlen, 1);
+
+        /* We'll need to loop to account for any spurious packets we might
+         * receive from other hosts. Note that this causes a small bug: in the
+         * unlikely event that our process receives several spurious packets,
+         * we still wait one second for each recv, potentially expanding the
+         * perceived timeout value. Working around this isn't too difficult,
+         * but would probably destroy any readability this code has left, so
+         * I'll just live with it. */
+        bool rx = false;
+        do {
+            /* Specify only a 1-second timeout, to account for the sleep above. */
+            rx = sock.timedRecv(next_addr, buf, rlen, 1);
+            if (rx && next_addr != addr) {
+                printf("packet arrived from incorrect address\n");
+            }
+        } while (rx && next_addr != addr);
+
+        /* Check to see if we timed out. */
         if (!rx) {
             print_timeout(buf[0]);
             continue;
         }
+
+        assert(rlen == 1);     /* it must be an ACK */
+        assert(buf[0] == seq); /* we're assuming the client's ACKs are reliable */
+
         print_receipt(buf[0]);
 
-        assert(next_addr == addr);
-        assert(rlen == 1);
-        assert(buf[0] == seq);
-
         seq++;
-        buf[0] = seq;
-        f.read(buf + 1, 50);
+        filepos += PAYLOADLEN;
     }
+
+    printf("File transfer complete.\n");
 
     return 0;
 }
